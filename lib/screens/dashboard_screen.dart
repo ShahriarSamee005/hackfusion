@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hackfusion/screens/route_map_screen.dart';
 import '../services/app_theme.dart';
 import '../services/auth_service.dart';
 import '../widgets/widgets.dart';
 import '../providers/role_provider.dart';
+import '../providers/sync_provider.dart';
 import '../models/role.dart';
 import 'login_screen.dart';
 import 'qr_generator_screen.dart';
 import 'qr_scanner_screen.dart';
-
 
 class DashboardScreen extends ConsumerWidget {
   final String name;
@@ -33,19 +34,14 @@ class DashboardScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Top bar ───────────────────────────────
                 _TopBar(name: name, role: role, email: email),
                 const SizedBox(height: 20),
-
-                // ── Offline banner ────────────────────────
                 _OfflineBanner(),
+                const SizedBox(height: 12),
+                _SyncStatusCard(),
                 const SizedBox(height: 24),
-
-                // ── Stats row ─────────────────────────────
                 _StatsRow(),
                 const SizedBox(height: 24),
-
-                // ── Quick actions ─────────────────────────
                 const Text(
                   'Quick Actions',
                   style: TextStyle(
@@ -57,8 +53,6 @@ class DashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 _ActionGrid(),
                 const SizedBox(height: 24),
-
-                // ── Activity feed ─────────────────────────
                 const Text(
                   'Recent Activity',
                   style: TextStyle(
@@ -94,7 +88,6 @@ class _TopBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Row(
       children: [
-        // Avatar
         Container(
           width: 44,
           height: 44,
@@ -118,8 +111,6 @@ class _TopBar extends ConsumerWidget {
           ),
         ),
         const SizedBox(width: 12),
-
-        // Name + role
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,8 +134,6 @@ class _TopBar extends ConsumerWidget {
             ],
           ),
         ),
-
-        // Logout
         IconButton(
           onPressed: () async {
             await AuthService.logout();
@@ -170,7 +159,6 @@ class _TopBar extends ConsumerWidget {
 class _OfflineBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // TODO: wire to real connectivity later
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -206,6 +194,101 @@ class _OfflineBanner extends StatelessWidget {
   }
 }
 
+// ── Sync Status Card ──────────────────────────────────────────
+class _SyncStatusCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sync = ref.watch(syncProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: sync.isConnected ? AppColors.success : AppColors.error,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  sync.isConnected
+                      ? 'Mesh node connected'
+                      : 'Mesh node offline',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.text,
+                  ),
+                ),
+                if (sync.lastSynced != null)
+                  Text(
+                    'Last sync: ${_timeAgo(sync.lastSynced!)}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                    ),
+                  )
+                else
+                  const Text(
+                    'Not synced yet',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () => ref.read(syncProvider.notifier).checkAndSync(),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.blue.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.sync_rounded, size: 14, color: AppColors.blueDark),
+                  SizedBox(width: 4),
+                  Text(
+                    'Sync',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.blueDark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _timeAgo(DateTime t) {
+    final diff = DateTime.now().difference(t);
+    if (diff.inSeconds < 60) return '${diff.inSeconds}s ago';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    return '${diff.inHours}h ago';
+  }
+}
+
 // ── Stats Row ─────────────────────────────────────────────────
 class _StatsRow extends StatelessWidget {
   final _stats = const [
@@ -220,9 +303,7 @@ class _StatsRow extends StatelessWidget {
       children: _stats.map((s) {
         return Expanded(
           child: Container(
-            margin: EdgeInsets.only(
-              right: s == _stats.last ? 0 : 10,
-            ),
+            margin: EdgeInsets.only(right: s == _stats.last ? 0 : 10),
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
               color: AppColors.card,
@@ -258,9 +339,9 @@ class _StatsRow extends StatelessWidget {
 }
 
 // ── Action Grid ───────────────────────────────────────────────
-class _ActionGrid extends StatelessWidget {
+class _ActionGrid extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final actions = [
       (
         'Generate QR',
@@ -280,25 +361,26 @@ class _ActionGrid extends StatelessWidget {
         'Routes',
         Icons.alt_route_rounded,
         AppColors.blueDark,
-        () {}, // Person B wires this
+        () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const RouteMapScreen())),
       ),
       (
         'Triage',
         Icons.warning_amber_rounded,
         AppColors.error,
-        () {}, // wire later
+        () {},
       ),
       (
-        'Sync Status',
+        'Sync',
         Icons.sync_rounded,
         AppColors.mint,
-        () {}, // Person A wires this
+        () => ref.read(syncProvider.notifier).checkAndSync(),
       ),
       (
         'Fleet',
         Icons.local_shipping_rounded,
         AppColors.textMuted,
-        () {}, // wire later
+        () {},
       ),
     ];
 
@@ -326,7 +408,7 @@ class _ActionGrid extends StatelessWidget {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: (a.$3).withOpacity(0.12),
+                    color: a.$3.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(a.$2, color: a.$3, size: 22),
@@ -394,8 +476,8 @@ class _ActivityFeed extends StatelessWidget {
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
                     Icon(item.$3, color: item.$4, size: 18),

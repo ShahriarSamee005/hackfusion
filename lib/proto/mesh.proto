@@ -1,0 +1,43 @@
+
+
+syntax = "proto3";
+package delta.v1;
+option go_package = "github.com/mumtahina22/delta/gen/go;deltav1";
+
+
+import "inventory.proto";
+import "pod.proto";
+message MeshEnvelope {
+  string          envelope_id = 1;
+  string          origin_id   = 2;
+  string          dest_id     = 3;
+  uint32          ttl         = 4;
+  bytes           ciphertext  = 5;
+  bytes           nonce       = 6;
+  bytes           auth_tag    = 7;
+  bytes           sender_sig  = 8;
+  repeated string hops        = 9;
+}
+
+message SyncRequest {
+  string          requester_id = 1;
+  VectorClock     have         = 2;
+  repeated string shards       = 3;
+}
+
+message SyncResponse {
+  InventoryState           inventory = 1;
+  repeated ProofOfDelivery pods      = 2;
+  VectorClock              clock     = 3;
+}
+
+message AckEnvelope {
+  string envelope_id = 1;
+  bool   accepted    = 2;
+}
+
+service MeshSync {
+  rpc Sync(SyncRequest)          returns (SyncResponse);
+  rpc PushEnvelope(MeshEnvelope) returns (AckEnvelope);
+  rpc StreamUpdates(SyncRequest) returns (stream MeshEnvelope);
+}

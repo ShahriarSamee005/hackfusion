@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'services/app_theme.dart';
 import 'screens/splash_screen.dart';
 
@@ -17,7 +18,7 @@ void main() {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
-  runApp(const HackFusionApp());
+  runApp(const ProviderScope(child: HackFusionApp()));
 }
 
 class HackFusionApp extends StatelessWidget {

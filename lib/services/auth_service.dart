@@ -13,17 +13,14 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final user = await ApiService.login(email: email, password: password);
-
+    // Offline fake auth — any email+password works
+    await Future.delayed(const Duration(milliseconds: 800)); // feels real
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyEmail, user['email'] ?? email);
-    await prefs.setString(_keyName, user['name'] ?? '');
+    final name = email.split('@').first; // derive name from email
+    await prefs.setString(_keyEmail, email);
+    await prefs.setString(_keyName, name);
     await prefs.setString(_keyLoginTime, DateTime.now().toIso8601String());
-
-    return {
-      'email': user['email'] ?? email,
-      'name': user['name'] ?? '',
-    };
+    return {'email': email, 'name': name};
   }
 
   static Future<String> signup({
@@ -31,8 +28,8 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    return await ApiService.register(
-        name: name, email: email, password: password);
+    await Future.delayed(const Duration(milliseconds: 800));
+    return 'Account created! Please sign in.';
   }
 
   static Future<Map<String, String>?> getStoredSession() async {

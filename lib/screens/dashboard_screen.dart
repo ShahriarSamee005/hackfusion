@@ -11,7 +11,35 @@ import 'login_screen.dart';
 import 'qr_generator_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'triage_screen.dart';
+import '../providers/activity_provider.dart';
 
+// ── Mock Data ─────────────────────────────────────────────────
+class _Delivery {
+  final String id;
+  final String destination;
+  final String status; // 'in_transit' | 'delivered'
+  const _Delivery(this.id, this.destination, this.status);
+}
+
+class _TriageCase {
+  final String title;
+  final String priority; // 'P0' | 'P1' | 'P2'
+  const _TriageCase(this.title, this.priority);
+}
+
+const _mockDeliveries = [
+  _Delivery('A1F2', 'Sunamganj Sadar Camp', 'in_transit'),
+  _Delivery('B3C7', 'Companyganj Outpost', 'delivered'),
+  _Delivery('D9E1', 'Habiganj Medical', 'in_transit'),
+];
+
+const _mockTriage = [
+  _TriageCase('Flood injury — west bank', 'P0'),
+  _TriageCase('Supply shortage — N4', 'P1'),
+  _TriageCase('Medical resupply needed', 'P1'),
+];
+
+// ── Dashboard ─────────────────────────────────────────────────
 class DashboardScreen extends ConsumerWidget {
   final String name;
   final String email;
@@ -43,31 +71,44 @@ class DashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 24),
                 _StatsRow(),
                 const SizedBox(height: 24),
-                const Text(
-                  'Quick Actions',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.text,
-                  ),
-                ),
+                _SectionHeader('Quick Actions'),
                 const SizedBox(height: 12),
                 _ActionGrid(),
                 const SizedBox(height: 24),
-                const Text(
-                  'Recent Activity',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.text,
-                  ),
-                ),
+                _SectionHeader('Active Deliveries'),
+                const SizedBox(height: 12),
+                _ActiveDeliveries(),
+                const SizedBox(height: 24),
+                _SectionHeader('Pending Triage'),
+                const SizedBox(height: 12),
+                _PendingTriage(),
+                const SizedBox(height: 24),
+                _SectionHeader('Recent Activity'),
                 const SizedBox(height: 12),
                 _ActivityFeed(),
+                const SizedBox(height: 20),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Section Header ────────────────────────────────────────────
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  const _SectionHeader(this.title);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w800,
+        color: AppColors.text,
       ),
     );
   }
@@ -217,7 +258,6 @@ class _SyncStatusCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              // Status dot — pulses when syncing
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 width: 10,
@@ -279,7 +319,22 @@ class _SyncStatusCard extends ConsumerWidget {
               GestureDetector(
                 onTap: sync.isSyncing
                     ? null
-                    : () => ref.read(syncProvider.notifier).checkAndSync(),
+                    : () {
+                        ref.read(syncProvider.notifier).checkAndSync();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Row(
+                              children: [
+                                Icon(Icons.sync_rounded,
+                                    color: Colors.white, size: 16),
+                                SizedBox(width: 8),
+                                Text('Synced with mesh node'),
+                              ],
+                            ),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding:
@@ -318,8 +373,6 @@ class _SyncStatusCard extends ConsumerWidget {
               ),
             ],
           ),
-
-          // Sync message bar — shows live status messages
           if (sync.syncMessage != null) ...[
             const SizedBox(height: 10),
             Container(
@@ -360,8 +413,6 @@ class _SyncStatusCard extends ConsumerWidget {
               ),
             ),
           ],
-
-          // Stats row — only shown when connected
           if (sync.isConnected) ...[
             const SizedBox(height: 10),
             Row(
@@ -450,19 +501,12 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-  String _timeAgo(DateTime t) {
-    final diff = DateTime.now().difference(t);
-    if (diff.inSeconds < 60) return '${diff.inSeconds}s ago';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    return '${diff.inHours}h ago';
-  }
-
 // ── Stats Row ─────────────────────────────────────────────────
 class _StatsRow extends StatelessWidget {
   final _stats = const [
-    ('Nodes', '4', Icons.device_hub_rounded),
-    ('Pending', '12', Icons.pending_actions_rounded),
-    ('Delivered', '7', Icons.check_circle_rounded),
+    ('Nodes', '6', Icons.device_hub_rounded),
+    ('Pending', '2', Icons.pending_actions_rounded),
+    ('Delivered', '1', Icons.check_circle_rounded),
   ];
 
   @override
@@ -543,7 +587,21 @@ class _ActionGrid extends ConsumerWidget {
         'Sync',
         Icons.sync_rounded,
         AppColors.mint,
-        () => ref.read(syncProvider.notifier).checkAndSync(),
+        () {
+          ref.read(syncProvider.notifier).checkAndSync();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.sync_rounded, color: Colors.white, size: 16),
+                  SizedBox(width: 8),
+                  Text('Synced with mesh node'),
+                ],
+              ),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        },
       ),
       (
         'Fleet',
@@ -601,35 +659,8 @@ class _ActionGrid extends ConsumerWidget {
   }
 }
 
-// ── Activity Feed ─────────────────────────────────────────────
-class _ActivityFeed extends StatelessWidget {
-  final _items = const [
-    (
-      'Delivery #A1F2 confirmed',
-      '2 min ago',
-      Icons.check_circle_rounded,
-      AppColors.success,
-    ),
-    (
-      'Node BD-04 joined mesh',
-      '5 min ago',
-      Icons.device_hub_rounded,
-      AppColors.blue,
-    ),
-    (
-      'Route recalculated — flood',
-      '11 min ago',
-      Icons.alt_route_rounded,
-      AppColors.warning,
-    ),
-    (
-      'P0 triage alert raised',
-      '18 min ago',
-      Icons.warning_amber_rounded,
-      AppColors.error,
-    ),
-  ];
-
+// ── Active Deliveries ─────────────────────────────────────────
+class _ActiveDeliveries extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -639,21 +670,284 @@ class _ActivityFeed extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
-        children: List.generate(_items.length, (i) {
-          final item = _items[i];
-          final isLast = i == _items.length - 1;
+        children: List.generate(_mockDeliveries.length, (i) {
+          final d = _mockDeliveries[i];
+          final isLast = i == _mockDeliveries.length - 1;
+          final isDelivered = d.status == 'delivered';
+
           return Column(
             children: [
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
-                    Icon(item.$3, color: item.$4, size: 18),
+                    // Status icon
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: isDelivered
+                            ? AppColors.success.withOpacity(0.12)
+                            : AppColors.blue.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        isDelivered
+                            ? Icons.check_circle_rounded
+                            : Icons.local_shipping_rounded,
+                        size: 18,
+                        color: isDelivered
+                            ? AppColors.success
+                            : AppColors.blue,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            d.destination,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.text,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'ID: ${d.id}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Status badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDelivered
+                            ? AppColors.success.withOpacity(0.12)
+                            : AppColors.warning.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isDelivered
+                              ? AppColors.success.withOpacity(0.3)
+                              : AppColors.warning.withOpacity(0.4),
+                        ),
+                      ),
+                      child: Text(
+                        isDelivered ? 'Delivered' : 'In Transit',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: isDelivered
+                              ? AppColors.success
+                              : AppColors.text,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isLast)
+                Divider(
+                  height: 1,
+                  color: AppColors.border.withOpacity(0.5),
+                  indent: 16,
+                  endIndent: 16,
+                ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+}
+
+// ── Pending Triage ────────────────────────────────────────────
+class _PendingTriage extends StatelessWidget {
+  Color _priorityColor(String p) {
+    switch (p) {
+      case 'P0':
+        return AppColors.error;
+      case 'P1':
+        return AppColors.warning;
+      default:
+        return AppColors.textMuted;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.error.withOpacity(0.25),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Header count
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded,
+                    size: 18, color: AppColors.error),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    '3 Active Cases',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.text,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    'Unresolved',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.error,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(
+              height: 1,
+              color: AppColors.border.withOpacity(0.5),
+              indent: 16,
+              endIndent: 16),
+          // Case list
+          ...List.generate(_mockTriage.length, (i) {
+            final t = _mockTriage[i];
+            final isLast = i == _mockTriage.length - 1;
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 10),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: _priorityColor(t.priority).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            t.priority,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: _priorityColor(t.priority),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          t.title,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.text,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded,
+                          size: 16, color: AppColors.textMuted),
+                    ],
+                  ),
+                ),
+                if (!isLast)
+                  Divider(
+                    height: 1,
+                    color: AppColors.border.withOpacity(0.5),
+                    indent: 16,
+                    endIndent: 16,
+                  ),
+              ],
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Activity Feed ─────────────────────────────────────────────
+class _ActivityFeed extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(activityProvider);
+
+    if (items.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Center(
+          child: Text(
+            'No activity yet',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textMuted,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: List.generate(items.length, (i) {
+          final item = items[i];
+          final isLast = i == items.length - 1;
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    Icon(item.icon, color: item.color, size: 18),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        item.$1,
+                        item.message,
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -662,7 +956,7 @@ class _ActivityFeed extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      item.$2,
+                      _timeAgo(item.time),
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.textMuted,
@@ -680,8 +974,15 @@ class _ActivityFeed extends StatelessWidget {
                 ),
             ],
           );
-        }).toList(),
+        }),
       ),
     );
+  }
+
+  String _timeAgo(DateTime t) {
+    final diff = DateTime.now().difference(t);
+    if (diff.inSeconds < 60) return '${diff.inSeconds}s ago';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    return '${diff.inHours}h ago';
   }
 }

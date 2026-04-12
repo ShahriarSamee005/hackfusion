@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hackfusion/providers/activity_provider.dart';
 import '../models/triage_case.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'activity_provider.dart';
 
 class TriageNotifier extends StateNotifier<List<TriageCase>> {
   Timer? _escalationTimer;
-  Timer? _uiTimer;
+  final Ref _ref;
 
-  TriageNotifier() : super(_demoData()) {
+  TriageNotifier(this._ref) : super(_demoData()) {
     _startEscalationTimer();
   }
 
@@ -83,6 +86,12 @@ class TriageNotifier extends StateNotifier<List<TriageCase>> {
       createdAt: DateTime.now(),
     );
     state = [...state, newCase];
+
+    // Push to activity feed
+    _ref.read(activityProvider.notifier).addTriageCreated(
+      title,
+      priority.label,
+    );
   }
 
   // ── Resolve case ──────────────────────────────────────────
@@ -108,12 +117,11 @@ class TriageNotifier extends StateNotifier<List<TriageCase>> {
   @override
   void dispose() {
     _escalationTimer?.cancel();
-    _uiTimer?.cancel();
     super.dispose();
   }
 }
 
 final triageProvider =
     StateNotifierProvider<TriageNotifier, List<TriageCase>>(
-  (ref) => TriageNotifier(),
+  (ref) => TriageNotifier(ref),
 );

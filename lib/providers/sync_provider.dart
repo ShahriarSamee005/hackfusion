@@ -40,6 +40,7 @@ class SyncNotifier extends StateNotifier<SyncState> {
         syncMessage: '✓ $merged updates merged via gRPC',
       );
     } catch (e) {
+      print('Sync Error: $e');
       state = state.copyWith(
         isConnected: false,
         isSyncing: false,

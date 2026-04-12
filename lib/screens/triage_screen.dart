@@ -5,6 +5,7 @@ import '../models/triage_case.dart';
 import '../providers/triage_provider.dart';
 import '../services/app_theme.dart';
 import '../widgets/widgets.dart';
+import 'qr_generator_screen.dart';
 
 class TriageScreen extends ConsumerStatefulWidget {
   const TriageScreen({super.key});
@@ -163,6 +164,16 @@ class _TriageScreenState extends ConsumerState<TriageScreen> {
                             onResolve: () => ref
                                 .read(triageProvider.notifier)
                                 .resolveCase(cases[i].id),
+                            onDispatch: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => QRGeneratorScreen(
+                                  prefillCargo: cases[i].title,
+                                  prefillDestination: cases[i].location,
+                                  triageCaseId: cases[i].id,
+                                ),
+                              ),
+                            ),
                           );
                         },
                       ),
@@ -191,8 +202,13 @@ class _TriageScreenState extends ConsumerState<TriageScreen> {
 class _TriageCard extends StatelessWidget {
   final TriageCase triageCase;
   final VoidCallback onResolve;
+  final VoidCallback onDispatch;
 
-  const _TriageCard({required this.triageCase, required this.onResolve});
+  const _TriageCard({
+    required this.triageCase,
+    required this.onResolve,
+    required this.onDispatch,
+  });
 
   String _formatDuration(Duration d) {
     if (d == Duration.zero) return 'BREACHED';
@@ -353,13 +369,42 @@ class _TriageCard extends StatelessWidget {
                   ),
                   const Spacer(),
 
-                  // Resolve button
-                  if (!c.isResolved)
+                  // Dispatch button
+                  if (!c.isResolved) ...[
+                    GestureDetector(
+                      onTap: onDispatch,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.blue.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: AppColors.blue.withOpacity(0.3)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.qr_code_rounded,
+                                size: 13, color: AppColors.blueDark),
+                            SizedBox(width: 4),
+                            Text(
+                              'Dispatch',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.blueDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     GestureDetector(
                       onTap: onResolve,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: AppColors.success.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(8),
@@ -383,6 +428,8 @@ class _TriageCard extends StatelessWidget {
                         ),
                       ),
                     ),
+
+                  ],
                 ],
               ),
             ],

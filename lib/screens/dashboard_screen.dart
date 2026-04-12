@@ -10,6 +10,7 @@ import '../models/role.dart';
 import 'login_screen.dart';
 import 'qr_generator_screen.dart';
 import 'qr_scanner_screen.dart';
+import 'triage_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   final String name;
@@ -368,7 +369,8 @@ class _ActionGrid extends ConsumerWidget {
         'Triage',
         Icons.warning_amber_rounded,
         AppColors.error,
-        () {},
+        () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const TriageScreen())),
       ),
       (
         'Sync',

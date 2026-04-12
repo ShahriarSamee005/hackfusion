@@ -206,77 +206,183 @@ class _SyncStatusCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: sync.isConnected
+              ? AppColors.success.withOpacity(0.4)
+              : AppColors.border,
+        ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              color: sync.isConnected ? AppColors.success : AppColors.error,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  sync.isConnected
-                      ? 'Mesh node connected'
-                      : 'Mesh node offline',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.text,
-                  ),
+          Row(
+            children: [
+              // Status dot — pulses when syncing
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: sync.isSyncing
+                      ? AppColors.warning
+                      : sync.isConnected
+                          ? AppColors.success
+                          : AppColors.error,
+                  shape: BoxShape.circle,
+                  boxShadow: sync.isConnected
+                      ? [
+                          BoxShadow(
+                            color: AppColors.success.withOpacity(0.4),
+                            blurRadius: 6,
+                            spreadRadius: 1,
+                          )
+                        ]
+                      : null,
                 ),
-                if (sync.lastSynced != null)
-                  Text(
-                    'Last sync: ${_timeAgo(sync.lastSynced!)}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                    ),
-                  )
-                else
-                  const Text(
-                    'Not synced yet',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () => ref.read(syncProvider.notifier).checkAndSync(),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.blue.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(8),
               ),
-              child: const Row(
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      sync.isSyncing
+                          ? 'Syncing mesh node...'
+                          : sync.isConnected
+                              ? 'Secure mesh link — ${sync.nodeId}'
+                              : 'Mesh node offline',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.text,
+                      ),
+                    ),
+                    if (sync.lastSynced != null)
+                      Text(
+                        'Last sync: ${_timeAgo(sync.lastSynced!)}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
+                      )
+                    else
+                      const Text(
+                        'Not synced yet',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: sync.isSyncing
+                    ? null
+                    : () => ref.read(syncProvider.notifier).checkAndSync(),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: sync.isSyncing
+                        ? AppColors.warning.withOpacity(0.12)
+                        : AppColors.blue.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: sync.isSyncing
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.warning,
+                          ),
+                        )
+                      : const Row(
+                          children: [
+                            Icon(Icons.sync_rounded,
+                                size: 14, color: AppColors.blueDark),
+                            SizedBox(width: 4),
+                            Text(
+                              'Sync',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.blueDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ],
+          ),
+
+          // Sync message bar — shows live status messages
+          if (sync.syncMessage != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: sync.isConnected
+                    ? AppColors.success.withOpacity(0.08)
+                    : AppColors.blue.withOpacity(0.07),
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Row(
                 children: [
-                  Icon(Icons.sync_rounded, size: 14, color: AppColors.blueDark),
-                  SizedBox(width: 4),
-                  Text(
-                    'Sync',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.blueDark,
+                  Icon(
+                    sync.isConnected
+                        ? Icons.verified_rounded
+                        : Icons.info_outline_rounded,
+                    size: 13,
+                    color: sync.isConnected
+                        ? AppColors.success
+                        : AppColors.blueDark,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      sync.syncMessage!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: sync.isConnected
+                            ? AppColors.success
+                            : AppColors.blueDark,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
+          ],
+
+          // Stats row — only shown when connected
+          if (sync.isConnected) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                _StatChip(
+                    label: 'Updates',
+                    value: '${sync.inventoryVersion}',
+                    icon: Icons.sync_alt_rounded),
+                const SizedBox(width: 8),
+                _StatChip(
+                    label: 'PODs',
+                    value: '${sync.podCount}',
+                    icon: Icons.verified_rounded),
+                const SizedBox(width: 8),
+                _StatChip(
+                    label: 'mTLS',
+                    value: 'AES-256',
+                    icon: Icons.lock_rounded),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -289,6 +395,67 @@ class _SyncStatusCard extends ConsumerWidget {
     return '${diff.inHours}h ago';
   }
 }
+
+class _StatChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+
+  const _StatChip({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 12, color: AppColors.blueDark),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.text,
+                    ),
+                  ),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+  String _timeAgo(DateTime t) {
+    final diff = DateTime.now().difference(t);
+    if (diff.inSeconds < 60) return '${diff.inSeconds}s ago';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    return '${diff.inHours}h ago';
+  }
 
 // ── Stats Row ─────────────────────────────────────────────────
 class _StatsRow extends StatelessWidget {

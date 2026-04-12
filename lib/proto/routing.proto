@@ -1,15 +1,8 @@
-
-
 syntax = "proto3";
 package delta.v1;
 option go_package = "github.com/mumtahina22/delta/gen/go;deltav1";
 
 import "inventory.proto";
-message GeoPoint {
-  double lat = 1;
-  double lng = 2;
-  float  alt = 3;
-}
 
 message RouteEdge {
   string from_node_id  = 1;
@@ -27,7 +20,7 @@ message RouteRequest {
   VehicleConstraint vehicle        = 4;
   Priority          cargo_priority = 5;
 
-  enum Priority         { P0 = 0; P1 = 1; P2 = 2; P3 = 3; }
+  enum Priority          { P0 = 0; P1 = 1; P2 = 2; P3 = 3; }
   enum VehicleConstraint { ANY = 0; BOAT_ONLY = 1; DRONE_ONLY = 2; FOOT = 3; }
 }
 

@@ -1,23 +1,26 @@
-
-
 syntax = "proto3";
 package delta.v1;
 option go_package = "github.com/mumtahina22/delta/gen/go;deltav1";
 
-import "google/protobuf/timestamp.proto";
 import "inventory.proto";
-import "routing.proto";
+
+message GeoPoint {
+  double lat = 1;
+  double lng = 2;
+  float  alt = 3;
+}
+
 message ProofOfDelivery {
-  string                    pod_id        = 1;
-  string                    route_id      = 2;
-  string                    sender_id     = 3;
-  string                    receiver_id   = 4;
-  repeated SupplyItem       items         = 5;
-  GeoPoint                  location      = 6;
-  google.protobuf.Timestamp delivered_at  = 7;
-  string                    totp_challenge = 8;
-  string                    totp_response  = 9;
-  bytes                     sender_sig    = 10;
-  bytes                     receiver_sig  = 11;
-  bytes                     payload_hash  = 12;
+  string              pod_id         = 1;
+  string              route_id       = 2;
+  string              sender_id      = 3;
+  string              receiver_id    = 4;
+  repeated SupplyItem items          = 5;
+  GeoPoint            location       = 6;
+  string              delivered_at   = 7;
+  string              totp_challenge = 8;
+  string              totp_response  = 9;
+  bytes               sender_sig     = 10;
+  bytes               receiver_sig   = 11;
+  bytes               payload_hash   = 12;
 }

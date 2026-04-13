@@ -81,9 +81,19 @@ class _RouteMapScreenState extends ConsumerState<RouteMapScreen> {
           }
         }
       }
-      // Recalculate route immediately
+
+      // Recalculate route immediately — preserve ML risk scores
       if (_selectedStart != null && _selectedEnd != null) {
-        _result = dijkstra(_graph!, _selectedStart!, _selectedEnd!);
+        final mlState = ref.read(mlProvider);
+        final mlRiskScores = mlState.hasRun
+            ? {for (var r in mlState.riskResults) r.edgeId: r.impassabilityProbability}
+            : null;
+        _result = dijkstra(
+          _graph!,
+          _selectedStart!,
+          _selectedEnd!,
+          mlRiskScores: mlRiskScores,
+        );
       }
     });
   }

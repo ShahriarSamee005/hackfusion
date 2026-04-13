@@ -12,6 +12,7 @@ import 'qr_generator_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'triage_screen.dart';
 import '../providers/activity_provider.dart';
+import 'ml_predict_screen.dart';
 
 // ── Mock Data ─────────────────────────────────────────────────
 class _Delivery {
@@ -604,10 +605,11 @@ class _ActionGrid extends ConsumerWidget {
         },
       ),
       (
-        'Fleet',
-        Icons.local_shipping_rounded,
-        AppColors.textMuted,
-        () {},
+        'ML Predict',
+        Icons.psychology_rounded,
+        AppColors.blueDark,
+        () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const MLPredictScreen())),
       ),
     ];
 

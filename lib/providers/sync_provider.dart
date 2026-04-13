@@ -13,8 +13,7 @@ class SyncNotifier extends StateNotifier<SyncState> {
       isSyncing: true,
       isConnected: false,
       syncMessage: 'Connecting to 192.168.67.16...',
-    );
-
+    ); 
     await Future.delayed(const Duration(milliseconds: 600));
 
     try {
@@ -49,7 +48,14 @@ class SyncNotifier extends StateNotifier<SyncState> {
       );
     }
   }
+    void resolveConflict() {
+    state = state.copyWith(
+      syncMessage: '✓ Conflict resolved via LWW — Device A selected',
+      inventoryVersion: state.inventoryVersion + 1,
+    );
+  }
 }
+
 
 final syncProvider =
     StateNotifierProvider<SyncNotifier, SyncState>((ref) => SyncNotifier());

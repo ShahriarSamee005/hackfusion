@@ -150,73 +150,162 @@ class _RouteMapScreenState extends ConsumerState<RouteMapScreen> {
   Widget _buildTopBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_rounded,
-                color: AppColors.text, size: 22),
-          ),
-          const SizedBox(width: 4),
-          const Text(
-            'Route Planner',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-              color: AppColors.text,
-            ),
-          ),
-          const Spacer(),
-          // Legend
-          _LegendDot(color: AppColors.success, label: 'Road'),
-          const SizedBox(width: 10),
-          _LegendDot(color: AppColors.blue, label: 'River'),
-          const SizedBox(width: 10),
-          // Flood mode toggle
-          GestureDetector(
-            onTap: () => setState(() => _floodMode = !_floodMode),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: _floodMode
-                    ? AppColors.error.withOpacity(0.15)
-                    : AppColors.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: _floodMode
-                      ? AppColors.error.withOpacity(0.5)
-                      : AppColors.border,
+          // Row 1 — back + title + flood toggle
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back_rounded,
+                    color: AppColors.text, size: 22),
+              ),
+              const SizedBox(width: 4),
+              const Expanded(
+                child: Text(
+                  'Route Planner',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.text,
+                  ),
                 ),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.water_rounded,
-                    size: 14,
-                    color:
-                        _floodMode ? AppColors.error : AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Flood',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+              GestureDetector(
+                onTap: () => setState(() => _floodMode = !_floodMode),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _floodMode
+                        ? AppColors.error.withOpacity(0.15)
+                        : AppColors.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
                       color: _floodMode
-                          ? AppColors.error
-                          : AppColors.textMuted,
+                          ? AppColors.error.withOpacity(0.5)
+                          : AppColors.border,
                     ),
                   ),
-                ],
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.water_rounded,
+                        size: 14,
+                        color: _floodMode
+                            ? AppColors.error
+                            : AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Flood',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _floodMode
+                              ? AppColors.error
+                              : AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
+            ],
+          ),
+
+          // Row 2 — legend dots
+          Padding(
+            padding: const EdgeInsets.only(left: 12, top: 6, bottom: 2),
+            child: Row(
+              children: [
+                _LegendDot(color: AppColors.success, label: 'Road'),
+                const SizedBox(width: 12),
+                _LegendDot(color: AppColors.blue, label: 'River'),
+                const SizedBox(width: 12),
+                _LegendDot(color: AppColors.error, label: 'Flooded'),
+                const SizedBox(width: 12),
+                _LegendDot(color: AppColors.warning, label: 'High Risk'),
+              ],
             ),
           ),
         ],
       ),
     );
   }
+
+  // Widget _buildTopBar(BuildContext context) {
+  //   return Padding(
+  //     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+  //     child: Row(
+  //       children: [
+  //         IconButton(
+  //           onPressed: () => Navigator.pop(context),
+  //           icon: const Icon(Icons.arrow_back_rounded,
+  //               color: AppColors.text, size: 22),
+  //         ),
+  //         const SizedBox(width: 4),
+  //         const Text(
+  //           'Route Planner',
+  //           style: TextStyle(
+  //             fontSize: 17,
+  //             fontWeight: FontWeight.w800,
+  //             color: AppColors.text,
+  //           ),
+  //         ),
+  //         const Spacer(),
+  //         // Legend
+  //         _LegendDot(color: AppColors.success, label: 'Road'),
+  //         const SizedBox(width: 10),
+  //         _LegendDot(color: AppColors.blue, label: 'River'),
+  //         const SizedBox(width: 10),
+  //         // Flood mode toggle
+  //         GestureDetector(
+  //           onTap: () => setState(() => _floodMode = !_floodMode),
+  //           child: AnimatedContainer(
+  //             duration: const Duration(milliseconds: 200),
+  //             padding:
+  //                 const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+  //             decoration: BoxDecoration(
+  //               color: _floodMode
+  //                   ? AppColors.error.withOpacity(0.15)
+  //                   : AppColors.surface,
+  //               borderRadius: BorderRadius.circular(8),
+  //               border: Border.all(
+  //                 color: _floodMode
+  //                     ? AppColors.error.withOpacity(0.5)
+  //                     : AppColors.border,
+  //               ),
+  //             ),
+  //             child: Row(
+  //               children: [
+  //                 Icon(
+  //                   Icons.water_rounded,
+  //                   size: 14,
+  //                   color:
+  //                       _floodMode ? AppColors.error : AppColors.textMuted,
+  //                 ),
+  //                 const SizedBox(width: 4),
+  //                 Text(
+  //                   'Flood',
+  //                   style: TextStyle(
+  //                     fontSize: 11,
+  //                     fontWeight: FontWeight.w700,
+  //                     color: _floodMode
+  //                         ? AppColors.error
+  //                         : AppColors.textMuted,
+  //                   ),
+  //                 ),
+  //               ],
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   // Banner shown when flood mode is active
   Widget _buildFloodBanner() {

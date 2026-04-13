@@ -299,22 +299,23 @@ class _SyncStatusCard extends ConsumerWidget {
                         color: AppColors.text,
                       ),
                     ),
-                    if (sync.lastSynced != null)
-                      Text(
-                        'Last sync: ${_timeAgo(sync.lastSynced!)}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                        ),
-                      )
-                    else
-                      const Text(
-                        'Not synced yet',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                        ),
+                    Text(
+                      sync.isSyncing
+                          ? 'Synchronizing data...'
+                          : sync.isConnected
+                              ? sync.lastSynced != null
+                                  ? 'Synced with mesh node · ${_timeAgo(sync.lastSynced!)}'
+                                  : 'Synced with mesh node'
+                              : 'Working locally — offline mode',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: sync.isSyncing
+                            ? AppColors.warning
+                            : sync.isConnected
+                                ? AppColors.success
+                                : AppColors.textMuted,
                       ),
+                    ),
                   ],
                 ),
               ),
@@ -435,6 +436,38 @@ class _SyncStatusCard extends ConsumerWidget {
                     icon: Icons.lock_rounded),
               ],
             ),
+            const SizedBox(height: 10),
+GestureDetector(
+  onTap: () => showDialog(
+    context: context,
+    builder: (_) => const _ConflictDialog(),
+  ),
+  child: Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(vertical: 9),
+    decoration: BoxDecoration(
+      color: AppColors.warning.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: AppColors.warning.withOpacity(0.35)),
+    ),
+    child: const Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.merge_type_rounded,
+            size: 14, color: AppColors.warning),
+        SizedBox(width: 6),
+        Text(
+          'Simulate Conflict',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppColors.text,
+          ),
+        ),
+      ],
+    ),
+  ),
+),
           ],
         ],
       ),
@@ -996,4 +1029,283 @@ class _ActivityFeed extends ConsumerWidget {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     return '${diff.inHours}h ago';
   }
+  
 }
+
+// ── Conflict Dialog ───────────────────────────────────────────
+class _ConflictDialog extends ConsumerWidget {
+  const _ConflictDialog();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final deviceATime = DateTime.now().subtract(const Duration(seconds: 8));
+    final deviceBTime = DateTime.now().subtract(const Duration(minutes: 3));
+
+    void resolve() {
+      Navigator.pop(context);
+      ref.read(syncProvider.notifier).resolveConflict();
+      ref.read(activityProvider.notifier).add(
+            message: 'Conflict resolved (LWW) — Device A selected',
+            icon: Icons.merge_type_rounded,
+            color: AppColors.mint,
+          );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 16),
+              SizedBox(width: 8),
+              Text('Conflict resolved using Last-Write-Wins'),
+            ],
+          ),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+
+    return Dialog(
+      backgroundColor: AppColors.card,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.merge_type_rounded,
+                      color: AppColors.warning, size: 20),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Conflict Detected',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.text,
+                        ),
+                      ),
+                      Text(
+                        'Inventory: Supply Crate #SY-07',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Device comparison
+            Row(
+              children: [
+                Expanded(
+                  child: _DeviceCard(
+                    label: 'Device A',
+                    value: '100 units',
+                    timestamp: deviceATime,
+                    isWinner: true,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _DeviceCard(
+                    label: 'Device B',
+                    value: '80 units',
+                    timestamp: deviceBTime,
+                    isWinner: false,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // LWW explanation
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline_rounded,
+                      size: 13, color: AppColors.blueDark),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Last-Write-Wins: Device A has the latest timestamp and will be selected automatically.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: resolve,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                      decoration: BoxDecoration(
+                        color: AppColors.blueDark,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'Auto Resolve',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DeviceCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final DateTime timestamp;
+  final bool isWinner;
+
+  const _DeviceCard({
+    required this.label,
+    required this.value,
+    required this.timestamp,
+    required this.isWinner,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isWinner
+            ? AppColors.success.withOpacity(0.08)
+            : AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isWinner
+              ? AppColors.success.withOpacity(0.4)
+              : AppColors.border,
+          width: isWinner ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.text,
+                ),
+              ),
+              if (isWinner) ...[
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'LATEST',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.success,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.text,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}:${timestamp.second.toString().padLeft(2, '0')}',
+            style: TextStyle(
+              fontSize: 10,
+              color: isWinner ? AppColors.success : AppColors.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+

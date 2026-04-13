@@ -26,7 +26,7 @@ class SyncService {
         authority: _certAuthority,
       );
       _channel = ClientChannel(
-        _serverHost,
+        _certAuthority,
         port: _serverPort,
         options: ChannelOptions(
           credentials: creds,

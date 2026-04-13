@@ -3,15 +3,17 @@ import '../services/app_theme.dart';
 import '../widgets/widgets.dart';
 import '../routing/graph.dart';
 import '../models/rainfall_model.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/ml_provider.dart';
 
-class MLPredictScreen extends StatefulWidget {
+class MLPredictScreen extends ConsumerStatefulWidget {
   const MLPredictScreen({super.key});
 
   @override
-  State<MLPredictScreen> createState() => _MLPredictScreenState();
+  ConsumerState<MLPredictScreen> createState() => _MLPredictScreenState();
 }
 
-class _MLPredictScreenState extends State<MLPredictScreen> {
+class _MLPredictScreenState extends ConsumerState<MLPredictScreen> {
   double _rainfallIntensity = 0.4;
   List<EdgeRiskResult> _results = [];
   List<GraphEdge> _edges = [];
@@ -37,13 +39,14 @@ class _MLPredictScreenState extends State<MLPredictScreen> {
     if (_edges.isEmpty) return;
     setState(() => _running = true);
 
-    // Simulate 1Hz ingestion delay
     Future.delayed(const Duration(milliseconds: 600), () {
-      final features =
-          RainfallIngester.ingestFeatures(_edges, _rainfallIntensity);
-      final results = FloodClassifier.classify(features);
+      // Run via provider so RouteMapScreen can read the results
+      ref.read(mlProvider.notifier).runPrediction(
+        _edges,
+        _rainfallIntensity,
+      );
       setState(() {
-        _results = results;
+        _results = ref.read(mlProvider).riskResults;
         _running = false;
       });
     });
@@ -303,17 +306,20 @@ class _MLPredictScreenState extends State<MLPredictScreen> {
               },
             ),
           ),
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
+            children: [
               Text('0 mm/hr',
+                  style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+              Text('Light',
+                  style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+              Text('⚡ Demo zone',
                   style: TextStyle(
-                      fontSize: 10, color: AppColors.textMuted)),
-              Text('Light', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
-              Text('Heavy', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.warning)),
               Text('100 mm/hr',
-                  style: TextStyle(
-                      fontSize: 10, color: AppColors.textMuted)),
+                  style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
             ],
           ),
         ],

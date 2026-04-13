@@ -5,15 +5,17 @@ import 'package:latlong2/latlong.dart';
 import '../routing/graph.dart';
 import '../routing/dijkstra.dart';
 import '../services/app_theme.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/ml_provider.dart';
 
-class RouteMapScreen extends StatefulWidget {
+class RouteMapScreen extends ConsumerStatefulWidget {
   const RouteMapScreen({super.key});
 
   @override
-  State<RouteMapScreen> createState() => _RouteMapScreenState();
+  ConsumerState<RouteMapScreen> createState() => _RouteMapScreenState();
 }
 
-class _RouteMapScreenState extends State<RouteMapScreen> {
+class _RouteMapScreenState extends ConsumerState<RouteMapScreen> {
   RouteGraph? _graph;
   RouteResult? _result;
   String? _selectedStart;
@@ -37,7 +39,19 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
 
   void _calculate() {
     if (_selectedStart == null || _selectedEnd == null) return;
-    final result = dijkstra(_graph!, _selectedStart!, _selectedEnd!);
+
+    // Pass ML risk scores into Dijkstra (M7.3 integration)
+    final mlState = ref.read(mlProvider);
+    final mlRiskScores = mlState.hasRun
+        ? {for (var r in mlState.riskResults) r.edgeId: r.impassabilityProbability}
+        : null;
+
+    final result = dijkstra(
+      _graph!,
+      _selectedStart!,
+      _selectedEnd!,
+      mlRiskScores: mlRiskScores,
+    );
     setState(() => _result = result);
   }
 
@@ -106,6 +120,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
           child: Column(
             children: [
               _buildTopBar(context),
+              _buildMLBanner(),   
               if (_floodMode) _buildFloodBanner(),
               _buildSelectors(),
               Expanded(child: _loading ? _buildLoader() : _buildMap()),
@@ -278,8 +293,8 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       child: FlutterMap(
-        options: MapOptions(
-          initialCenter: const LatLng(24.8949, 91.8687),
+        options: const MapOptions(
+          initialCenter: LatLng(24.8949, 91.8687),
           initialZoom: 9,
         ),
         children: [
@@ -288,23 +303,42 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
             userAgentPackageName: 'com.hackfusion.app',
           ),
 
-          // All edges
-          PolylineLayer(
-            polylines: _graph!.allEdges.map((e) {
-              final from = _graph!.nodes[e.source]!;
-              final to = _graph!.nodes[e.target]!;
-              return Polyline(
-                points: [
-                  LatLng(from.lat, from.lng),
-                  LatLng(to.lat, to.lng)
-                ],
-                color: e.isFlooded
-                    ? Colors.red.withOpacity(0.6)
-                    : Colors.grey.withOpacity(0.35),
-                strokeWidth: e.isFlooded ? 3.5 : 2,
-              );
-            }).toList(),
-          ),
+        // All edges
+        PolylineLayer(
+          polylines: _graph!.allEdges.map((e) {
+            final from = _graph!.nodes[e.source]!;
+            final to = _graph!.nodes[e.target]!;
+
+            // M7.4 — color edges by ML predicted risk
+            final mlState = ref.watch(mlProvider);
+            final risk = mlState.riskFor(e.id);
+            Color edgeColor;
+            double width;
+
+            if (e.isFlooded) {
+              edgeColor = Colors.red.withOpacity(0.8);
+              width = 4.0;
+            } else if (mlState.hasRun && risk >= 0.75) {
+              edgeColor = AppColors.error.withOpacity(0.7);  // critical
+              width = 3.5;
+            } else if (mlState.hasRun && risk >= 0.50) {
+              edgeColor = AppColors.warning.withOpacity(0.7); // high
+              width = 3.0;
+            } else if (mlState.hasRun && risk >= 0.25) {
+              edgeColor = AppColors.blue.withOpacity(0.6);   // medium
+              width = 2.5;
+            } else {
+              edgeColor = Colors.grey.withOpacity(0.35);      // low/unknown
+              width = 2.0;
+            }
+
+            return Polyline(
+              points: [LatLng(from.lat, from.lng), LatLng(to.lat, to.lng)],
+              color: edgeColor,
+              strokeWidth: width,
+            );
+          }).toList(),
+        ),
 
           // Active route
           if (polyline.isNotEmpty)
@@ -482,6 +516,43 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
       child: CircularProgressIndicator(color: AppColors.blue),
     );
   }
+  Widget _buildMLBanner() {
+  final mlState = ref.watch(mlProvider);
+  if (!mlState.hasRun) return const SizedBox.shrink();
+
+  final highRisk = mlState.riskResults
+      .where((r) => r.impassabilityProbability >= 0.7)
+      .length;
+
+  return Container(
+    margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+    decoration: BoxDecoration(
+      color: AppColors.warning.withOpacity(0.10),
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: AppColors.warning.withOpacity(0.4)),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.psychology_rounded,
+            size: 14, color: AppColors.warning),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'ML active — $highRisk high-risk edges penalized in routing',
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.text,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+  
 }
 
 // ── Helper Widgets ────────────────────────────────────────────

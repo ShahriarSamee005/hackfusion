@@ -46,8 +46,8 @@ enum RiskLevel { low, medium, high, critical }
 /// In production this would read from a CSV or sensor API at 1Hz
 class RainfallIngester {
   /// Base rainfall rates per edge type (mm/hr baseline)
-  static const _riverBaseRain = 45.0;
-  static const _roadBaseRain = 30.0;
+  static const _riverBaseRain = 65.0;
+  static const _roadBaseRain = 42.0;
 
   /// Generate simulated rainfall features for all edges
   /// [rainfallIntensity] is 0.0–1.0 from the UI slider
@@ -57,7 +57,7 @@ class RainfallIngester {
   ) {
     final features = <EdgeRainfallFeatures>[];
     // Different risk profiles per edge — makes demo more interesting
-    final seeds = [0.95, 0.45, 0.88, 0.35, 0.99, 0.28, 0.72];
+    final seeds = [0.99, 0.42, 0.95, 0.32, 1.0, 0.25, 0.97];
 
     for (var i = 0; i < edges.length; i++) {
       final edge = edges[i];
@@ -109,16 +109,15 @@ class FloodClassifier {
       double prob = 0.0;
 
       // Node 1: cumulative rainfall split (most important feature)
-      if (f.cumulativeRainfallMm > 80) {
-        prob += 0.45;
-      } else if (f.cumulativeRainfallMm > 60) {
-        prob += 0.30;
-      } else if (f.cumulativeRainfallMm > 40) {
-        prob += 0.15;
-      } else {
-        prob += 0.05;
-      }
-
+    if (f.cumulativeRainfallMm > 70) {
+      prob += 0.50;
+    } else if (f.cumulativeRainfallMm > 50) {
+      prob += 0.35;
+    } else if (f.cumulativeRainfallMm > 30) {
+      prob += 0.18;
+    } else {
+      prob += 0.05;
+    }
       // Node 2: soil saturation split
       if (f.soilSaturation > 0.75) {
         prob += 0.25;

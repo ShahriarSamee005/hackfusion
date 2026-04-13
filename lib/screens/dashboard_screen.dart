@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hackfusion/providers/triage_provider.dart';
 import 'package:hackfusion/screens/route_map_screen.dart';
 import '../services/app_theme.dart';
 import '../services/auth_service.dart';
@@ -503,20 +504,28 @@ class _StatChip extends StatelessWidget {
 }
 
 // ── Stats Row ─────────────────────────────────────────────────
-class _StatsRow extends StatelessWidget {
-  final _stats = const [
-    ('Nodes', '6', Icons.device_hub_rounded),
-    ('Pending', '2', Icons.pending_actions_rounded),
-    ('Delivered', '1', Icons.check_circle_rounded),
-  ];
-
+class _StatsRow extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cases = ref.watch(triageProvider);
+    final activity = ref.watch(activityProvider);
+
+    final pending = cases.where((c) => !c.isResolved).length;
+    final delivered = activity
+        .where((a) => a.message.startsWith('Delivery #'))
+        .length;
+
+    final stats = [
+      ('Nodes', '4', Icons.device_hub_rounded),
+      ('Pending', '$pending', Icons.pending_actions_rounded),
+      ('Delivered', '$delivered', Icons.check_circle_rounded),
+    ];
+
     return Row(
-      children: _stats.map((s) {
+      children: stats.map((s) {
         return Expanded(
           child: Container(
-            margin: EdgeInsets.only(right: s == _stats.last ? 0 : 10),
+            margin: EdgeInsets.only(right: s == stats.last ? 0 : 10),
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
               color: AppColors.card,
